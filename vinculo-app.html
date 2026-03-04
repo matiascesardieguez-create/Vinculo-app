@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vínculo — App para parejas</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Plus+Jakarta+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue, remove, update, set, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyBQvHweapsRp5_VBomxIza2xKTE-Gyknu0",
+    authDomain:        "vinculo-ap.firebaseapp.com",
+    databaseURL:       "https://vinculo-ap-default-rtdb.firebaseio.com",
+    projectId:         "vinculo-ap",
+    storageBucket:     "vinculo-ap.firebasestorage.app",
+    messagingSenderId: "378654532952",
+    appId:             "1:378654532952:web:4022ab7a4df81dabfc312d"
+  };
+
+  if (firebaseConfig.apiKey === "TU_API_KEY") {
+    document.getElementById('cfg-overlay').style.display = 'flex';
+  } else { iniciar(firebaseConfig); }
+
+  window._iniciarFirebase = cfg => iniciar(cfg);
+
+  function iniciar(cfg) {
+    try {
+      const app = initializeApp(cfg);
+      const db  = getDatabase(app);
+      window._firebase_ok = true;
+      document.getElementById('cfg-overlay').style.display = 'none';
+
+      window._db = db;
+      window._push  = (path, data) => push(ref(db, path), data);
+      window._set   = (path, data) => set(ref(db, path), data);
+      window._update= (path, data) => update(ref(db, path), data);
+      window._del   = (path) => remove(ref(db, path));
+      window._on    = (path, cb) => onValue(ref(db, path), snap => cb(snap.val()));
+      window._get   = (path) => get(ref(db, path)).then(s => s.val());
+
+      iniciarSesion();
+    } catch(e) { alert('Error Firebase: ' + e.message); }
+  }
+</script>
+
+<style>
+:root {
+  --bg:     #fdf6f0;
+  --bg2:    #f9efe6;
+  --surf:   #ffffff;
+  --border: #ecddd2;
+  --ink:    #1a0f0a;
+  --ink2:   #7a5c4e;
+  --ink3:   #c4a898;
+  --rose:   #c4526e;
+  --rose2:  #fde8ee;
+  --gold:   #c17f3a;
+  --gold2:  #fdf3e3;
+  --teal:   #2d7d6f;
+  --teal2:  #e4f5f2;
+  --sans:   'Plus Jakarta Sans', sans-serif;
+  --serif:  'Cormorant Garamond', serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body { background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:15px; }
+
+/* ── CONFIG ── */
+#cfg-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(26,15,10,0.95); z-index:3000;
+  align-items:center; justify-content:center; padding:20px;
+}
+.cfg-box { background:#fff; padding:32px; max-width:440px; width:100%; }
+.cfg-box h2 { font-family:var(--serif); font-size:1.8rem; font-weight:600; margin-bottom:8px; color:var(--rose); }
+.cfg-box p  { font-size:0.8rem; color:var(--ink2); margin-bottom:16px; line-height:1.6; }
+.cfg-grid   { display:grid; gap:8px; margin-bottom:14px; }
+.cfg-grid input { border:1.5px solid var(--border); padding:10px 12px; font-family:var(--sans); font-size:0.82rem; width:100%; outline:none; }
+.cfg-grid input:focus { border-color:var(--rose); }
+.btn-cfg { width:100%; padding:13px; background:var(--rose); color:#fff; border:none; font-family:var(--sans); font-size:0.82rem; font-weight:500; cursor:pointer; letter-spacing:0.5px; }
+
+/* ── PANTALLA LOGIN ── */
+#screen-login {
+  min-height:100vh; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:32px 20px;
+  background: linear-gradient(160deg, #fdf6f0 0%, #fce8f0 100%);
+}
+.login-logo { font-family:var(--serif); font-size:3.5rem; font-weight:300; color:var(--rose); margin-bottom:8px; letter-spacing:-1px; }
+.login-logo em { font-style:italic; }
+.login-tag  { font-size:0.8rem; color:var(--ink2); margin-bottom:40px; letter-spacing:1px; text-transform:uppercase; }
+.login-card { background:#fff; border:1px solid var(--border); padding:32px; width:100%; max-width:380px; }
+.login-card h3 { font-family:var(--serif); font-size:1.5rem; font-weight:400; margin-bottom:6px; }
+.login-card p  { font-size:0.78rem; color:var(--ink2); margin-bottom:20px; line-height:1.6; }
+.login-card input { width:100%; border:1.5px solid var(--border); padding:11px 14px; font-family:var(--sans); font-size:0.88rem; outline:none; margin-bottom:10px; background:var(--bg); }
+.login-card input:focus { border-color:var(--rose); }
+.btn-rose { width:100%; padding:13px; background:var(--rose); color:#fff; border:none; font-family:var(--sans); font-size:0.82rem; font-weight:500; cursor:pointer; transition:opacity 0.15s; margin-top:4px; }
+.btn-rose:hover { opacity:0.88; }
+.login-divider { text-align:center; font-size:0.72rem; color:var(--ink3); margin:16px 0; }
+.btn-link { background:none; border:none; color:var(--rose); font-family:var(--sans); font-size:0.78rem; cursor:pointer; text-decoration:underline; }
+
+/* ── APP PRINCIPAL ── */
+#screen-app { display:none; min-height:100vh; padding-bottom:80px; }
+
+/* HEADER */
+.app-header {
+  background:#fff; border-bottom:1px solid var(--border);
+  padding:0 20px; height:56px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:100;
+}
+.app-logo { font-family:var(--serif); font-size:1.5rem; font-weight:300; color:var(--rose); }
+.app-logo em { font-style:italic; }
+.header-pareja { font-size:0.72rem; color:var(--ink2); text-align:right; line-height:1.4; }
+.header-pareja strong { color:var(--rose); display:block; }
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position:fixed; bottom:0; left:0; right:0;
+  background:#fff; border-top:1px solid var(--border);
+  display:flex; z-index:100; height:64px;
+}
+.bnav-item {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:3px; cursor:pointer; transition:color 0.15s; color:var(--ink3);
+  font-size:0.58rem; text-transform:uppercase; letter-spacing:1px; border:none; background:none;
+  font-family:var(--sans);
+}
+.bnav-item.activo { color:var(--rose); }
+.bnav-icon { font-size:1.2rem; }
+
+/* SECTIONS */
+.section { display:none; padding:20px; max-width:600px; margin:0 auto; }
+.section.activa { display:block; }
+
+/* ── INICIO ── */
+.contador-card {
+  background: linear-gradient(135deg, var(--rose) 0%, #a03055 100%);
+  color:#fff; padding:28px 24px; margin-bottom:20px; text-align:center;
+  position:relative; overflow:hidden;
+}
+.contador-card::before {
+  content:'♥';
+  position:absolute; right:-10px; top:-20px;
+  font-size:8rem; opacity:0.08;
+}
+.contador-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; opacity:0.8; margin-bottom:8px; }
+.contador-num   { font-family:var(--serif); font-size:3rem; font-weight:300; line-height:1; margin-bottom:4px; }
+.contador-sub   { font-size:0.75rem; opacity:0.7; }
+
+.pregunta-card {
+  background:#fff; border:1px solid var(--border); padding:24px;
+  margin-bottom:16px; position:relative;
+}
+.pregunta-etiq { font-size:0.62rem; text-transform:uppercase; letter-spacing:2px; color:var(--rose); margin-bottom:12px; font-weight:500; }
+.pregunta-txt  { font-family:var(--serif); font-size:1.4rem; font-weight:300; line-height:1.4; margin-bottom:16px; color:var(--ink); }
+.respuestas-area { display:grid; gap:10px; }
+.resp-input {
+  width:100%; border:1.5px solid var(--border); padding:10px 14px;
+  font-family:var(--sans); font-size:0.85rem; outline:none; background:var(--bg);
+  resize:none; min-height:70px;
+}
+.resp-input:focus { border-color:var(--rose); }
+.resp-guardada {
+  background:var(--rose2); border:1px solid rgba(196,82,110,0.2);
+  padding:12px 14px; font-size:0.85rem; line-height:1.5;
+}
+.resp-autor { font-size:0.65rem; color:var(--rose); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; font-weight:500; }
+
+.desafio-card {
+  background:var(--gold2); border:1px solid rgba(193,127,58,0.2);
+  padding:20px; margin-bottom:16px;
+}
+.desafio-etiq { font-size:0.62rem; text-transform:uppercase; letter-spacing:2px; color:var(--gold); margin-bottom:10px; font-weight:500; }
+.desafio-txt  { font-family:var(--serif); font-size:1.2rem; font-weight:300; line-height:1.4; color:var(--ink); margin-bottom:14px; }
+
+/* ── DIARIO ── */
+.diario-entry {
+  background:#fff; border:1px solid var(--border); padding:18px;
+  margin-bottom:10px; animation:fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.entry-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.entry-autor { font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; color:var(--rose); font-weight:500; }
+.entry-fecha { font-size:0.65rem; color:var(--ink3); }
+.entry-txt   { font-size:0.88rem; line-height:1.6; color:var(--ink); }
+.entry-emoji { font-size:1.2rem; margin-bottom:6px; }
+
+/* ── DESAFÍOS ── */
+.desafio-item {
+  background:#fff; border:1px solid var(--border); padding:18px 20px;
+  margin-bottom:10px; display:flex; align-items:flex-start; gap:14px;
+}
+.desafio-ico { font-size:1.6rem; flex-shrink:0; }
+.desafio-body { flex:1; }
+.desafio-nombre { font-weight:500; font-size:0.9rem; margin-bottom:4px; }
+.desafio-desc   { font-size:0.78rem; color:var(--ink2); line-height:1.5; }
+.desafio-cat    { font-size:0.6rem; text-transform:uppercase; letter-spacing:1px; color:var(--teal); margin-top:6px; font-weight:500; }
+.desafio-completar {
+  padding:6px 14px; background:none; border:1.5px solid var(--border);
+  font-family:var(--sans); font-size:0.68rem; cursor:pointer; color:var(--ink2);
+  transition:all 0.15s; text-transform:uppercase; letter-spacing:1px; white-space:nowrap;
+}
+.desafio-completar.hecho { background:var(--teal2); border-color:var(--teal); color:var(--teal); }
+
+/* ── PERFIL ── */
+.perfil-hero {
+  background: linear-gradient(135deg, #fce8f0, #fdf6f0);
+  border:1px solid var(--border); padding:28px 24px; text-align:center; margin-bottom:16px;
+}
+.perfil-nombres { font-family:var(--serif); font-size:1.8rem; font-weight:300; margin-bottom:4px; }
+.perfil-nombres em { color:var(--rose); font-style:italic; }
+.perfil-desde   { font-size:0.72rem; color:var(--ink2); text-transform:uppercase; letter-spacing:1px; }
+
+.stat-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:16px; }
+.stat-box { background:#fff; border:1px solid var(--border); padding:14px; text-align:center; }
+.stat-num { font-family:var(--serif); font-size:1.6rem; color:var(--rose); }
+.stat-lbl { font-size:0.62rem; text-transform:uppercase; letter-spacing:1px; color:var(--ink3); margin-top:3px; }
+
+.premium-card {
+  background: linear-gradient(135deg, var(--ink) 0%, #3d1f14 100%);
+  color:#fff; padding:24px; margin-bottom:16px;
+}
+.premium-card h3 { font-family:var(--serif); font-size:1.4rem; font-weight:300; margin-bottom:6px; color:#f9c8d8; }
+.premium-card p  { font-size:0.78rem; opacity:0.7; line-height:1.6; margin-bottom:16px; }
+.premium-features { list-style:none; margin-bottom:18px; }
+.premium-features li { font-size:0.78rem; padding:4px 0; opacity:0.85; }
+.premium-features li::before { content:'✦ '; color:var(--rose); }
+.btn-premium { padding:12px 24px; background:var(--rose); color:#fff; border:none; font-family:var(--sans); font-size:0.78rem; font-weight:500; cursor:pointer; letter-spacing:0.5px; }
+
+/* ── PANEL ── */
+.panel { background:#fff; border:1px solid var(--border); padding:20px; margin-bottom:14px; }
+.panel-title { font-family:var(--serif); font-size:1.1rem; font-weight:400; margin-bottom:14px; color:var(--ink); }
+
+/* ── BUTTONS ── */
+.btn { padding:10px 20px; border:none; font-family:var(--sans); font-size:0.78rem; font-weight:500; cursor:pointer; transition:opacity 0.15s; }
+.btn:hover { opacity:0.85; }
+.btn-sm    { padding:7px 14px; font-size:0.7rem; }
+.btn-full  { width:100%; padding:13px; }
+.btn-outline { background:none; border:1.5px solid var(--border); color:var(--ink2); }
+.btn-teal    { background:var(--teal); color:#fff; }
+
+/* ── MISC ── */
+.txt-xs   { font-size:0.7rem; color:var(--ink2); }
+.txt-muted{ color:var(--ink3); }
+.mt12 { margin-top:12px; }
+.mb16 { margin-bottom:16px; }
+.flex-gap { display:flex; gap:8px; flex-wrap:wrap; }
+.empty { text-align:center; padding:40px 20px; color:var(--ink3); font-size:0.82rem; line-height:2; }
+.empty-icon { font-size:2.5rem; margin-bottom:10px; }
+
+/* ── TOAST ── */
+#toast { position:fixed; bottom:76px; right:20px; background:var(--ink); color:#fff; padding:12px 20px; font-size:0.75rem; opacity:0; transform:translateY(8px); transition:all 0.22s; pointer-events:none; z-index:999; }
+#toast.show { opacity:1; transform:translateY(0); }
+
+select { width:100%; border:1.5px solid var(--border); padding:10px 12px; font-family:var(--sans); font-size:0.85rem; background:var(--bg); outline:none; color:var(--ink); }
+select:focus { border-color:var(--rose); }
+</style>
+</head>
+<body>
+
+<!-- CONFIG -->
+<div id="cfg-overlay">
+  <div class="cfg-box">
+    <h2>Vínculo ♥</h2>
+    <p>Configurá Firebase para activar la app.</p>
+    <div class="cfg-grid">
+      <input id="c-apiKey"      placeholder="apiKey">
+      <input id="c-authDomain"  placeholder="authDomain">
+      <input id="c-dbURL"       placeholder="databaseURL">
+      <input id="c-projectId"   placeholder="projectId">
+      <input id="c-appId"       placeholder="appId">
+    </div>
+    <button class="btn-cfg" onclick="conectar()">Activar Vínculo</button>
+  </div>
+</div>
+
+<!-- ═══ PANTALLA LOGIN ═══ -->
+<div id="screen-login">
+  <div class="login-logo"><em>Vínculo</em></div>
+  <div class="login-tag">La app para tu pareja</div>
+
+  <div class="login-card" id="login-nuevo">
+    <h3>Crear cuenta</h3>
+    <p>Ingresá tu nombre y el de tu pareja para empezar.</p>
+    <input type="text" id="mi-nombre"    placeholder="Tu nombre">
+    <input type="text" id="pareja-nombre" placeholder="Nombre de tu pareja">
+    <input type="date"  id="fecha-inicio" placeholder="¿Desde cuándo están juntos?">
+    <small class="txt-xs" style="display:block;margin-bottom:10px">📅 ¿Desde cuándo están juntos?</small>
+    <button class="btn-rose" onclick="crearCuenta()">Comenzar juntos ♥</button>
+    <div class="login-divider">¿Ya tenés cuenta?</div>
+    <button class="btn-link" onclick="mostrarLogin()">Ingresá con tu nombre</button>
+  </div>
+
+  <div class="login-card" id="login-existente" style="display:none">
+    <h3>Bienvenido de vuelta</h3>
+    <p>Ingresá tu nombre para continuar.</p>
+    <input type="text" id="login-nombre" placeholder="Tu nombre">
+    <button class="btn-rose" onclick="loginExistente()">Entrar</button>
+    <div class="login-divider">¿Primera vez?</div>
+    <button class="btn-link" onclick="mostrarRegistro()">Crear cuenta nueva</button>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div id="screen-app">
+
+  <header class="app-header">
+    <div class="app-logo"><em>Vínculo</em></div>
+    <div class="header-pareja">
+      <strong id="hdr-pareja">—</strong>
+      <span id="hdr-dias">—</span>
+    </div>
+  </header>
+
+  <!-- ── INICIO ── -->
+  <section class="section activa" id="sec-inicio">
+
+    <!-- Contador -->
+    <div class="contador-card">
+      <div class="contador-label">Juntos hace</div>
+      <div class="contador-num" id="cnt-dias">0</div>
+      <div class="contador-sub" id="cnt-label">días</div>
+    </div>
+
+    <!-- Pregunta del día -->
+    <div class="pregunta-card">
+      <div class="pregunta-etiq">💬 Pregunta del día</div>
+      <div class="pregunta-txt" id="preg-txt">Cargando…</div>
+      <div class="respuestas-area" id="respuestas-area"></div>
+    </div>
+
+    <!-- Desafío de la semana -->
+    <div class="desafio-card">
+      <div class="desafio-etiq">🎯 Desafío de la semana</div>
+      <div class="desafio-txt" id="desafio-semana">Cargando…</div>
+      <button class="btn btn-sm btn-outline" id="btn-desafio-ok" onclick="completarDesafioSemana()">Marcar como hecho ✓</button>
+    </div>
+
+  </section>
+
+  <!-- ── DIARIO ── -->
+  <section class="section" id="sec-diario">
+    <div class="panel">
+      <div class="panel-title">✍️ Escribir en el diario</div>
+      <select id="diario-emoji" style="margin-bottom:10px">
+        <option value="💕">💕 Con amor</option>
+        <option value="😊">😊 Feliz</option>
+        <option value="🌙">🌙 Reflexivo</option>
+        <option value="🔥">🔥 Apasionado</option>
+        <option value="🌸">🌸 Agradecido</option>
+        <option value="💭">💭 Pensativo</option>
+      </select>
+      <textarea class="resp-input" id="diario-txt" placeholder="¿Qué querés guardar hoy para los dos?"></textarea>
+      <button class="btn btn-rose btn-full mt12" onclick="escribirDiario()">Guardar en el diario</button>
+    </div>
+
+    <div id="entradas-diario">
+      <div class="empty"><div class="empty-icon">📖</div>El diario está vacío.<br>¡Escribí la primera entrada!</div>
+    </div>
+  </section>
+
+  <!-- ── DESAFÍOS ── -->
+  <section class="section" id="sec-desafios">
+    <div style="margin-bottom:16px">
+      <div style="font-family:var(--serif);font-size:1.6rem;font-weight:300;margin-bottom:4px">Desafíos <em style="color:var(--rose);font-style:italic">para dos</em></div>
+      <div class="txt-xs">Actividades para fortalecer su vínculo</div>
+    </div>
+
+    <div id="lista-desafios"></div>
+  </section>
+
+  <!-- ── PERFIL ── -->
+  <section class="section" id="sec-perfil">
+
+    <div class="perfil-hero">
+      <div class="perfil-nombres" id="perf-nombres">— <em>&</em> —</div>
+      <div class="perfil-desde" id="perf-desde">Juntos desde —</div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-box">
+        <div class="stat-num" id="st-dias">0</div>
+        <div class="stat-lbl">Días</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="st-entradas">0</div>
+        <div class="stat-lbl">Entradas</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="st-desafios">0</div>
+        <div class="stat-lbl">Desafíos</div>
+      </div>
+    </div>
+
+    <div class="premium-card">
+      <h3>✦ Vínculo Premium</h3>
+      <p>Llevá su relación al siguiente nivel con funciones exclusivas.</p>
+      <ul class="premium-features">
+        <li>Preguntas profundas desbloqueadas</li>
+        <li>Plan de reconexión de 30 días</li>
+        <li>Test de compatibilidad completo</li>
+        <li>Recordatorios personalizados</li>
+        <li>Modo "sin peleas" con guía de conflictos</li>
+        <li>Biblioteca de +500 desafíos</li>
+      </ul>
+      <button class="btn-premium" onclick="toast('¡Próximamente disponible! 💕')">Ver planes desde $5/mes</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">⚙️ Mi cuenta</div>
+      <div class="txt-xs" style="margin-bottom:12px">Usuario: <strong id="perf-usuario">—</strong></div>
+      <button class="btn btn-outline btn-full" onclick="cerrarSesion()">Cerrar sesión</button>
+    </div>
+
+  </section>
+
+  <nav class="bottom-nav">
+    <button class="bnav-item activo" onclick="ir('inicio')"><span class="bnav-icon">🏠</span>Inicio</button>
+    <button class="bnav-item" onclick="ir('diario')"><span class="bnav-icon">📖</span>Diario</button>
+    <button class="bnav-item" onclick="ir('desafios')"><span class="bnav-icon">🎯</span>Desafíos</button>
+    <button class="bnav-item" onclick="ir('perfil')"><span class="bnav-icon">👤</span>Perfil</button>
+  </nav>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Datos ─────────────────────────────────────────────
+const PREGUNTAS = [
+  "¿Cuál es el momento en que más te enamoraste de mí?",
+  "¿Qué es lo que más valorás de nuestra relación?",
+  "¿Cuál es tu recuerdo favorito de nosotros dos?",
+  "¿Qué cosa pequeña que hago te hace feliz?",
+  "¿Dónde te imaginás que estaremos en 5 años?",
+  "¿Qué aprendiste de mí que no sabías antes?",
+  "¿Cuál fue el momento más difícil que superamos juntos?",
+  "¿Qué canción te recuerda a nosotros?",
+  "¿Qué es lo que más te gusta de cómo nos comunicamos?",
+  "¿Qué sueño compartido querés que hagamos realidad?",
+  "¿Qué momento quisieras revivir con migo?",
+  "¿Qué cosa de mí te sorprendió con el tiempo?",
+  "¿Cuál fue la primera vez que pensaste 'esta es la persona'?",
+  "¿Qué le cambiarías a nuestra rutina diaria?",
+  "¿Qué te da miedo y nunca me lo dijiste?"
+];
+
+const DESAFIOS = [
+  { ico:'🍳', nombre:'Cocinemos juntos', desc:'Elijan una receta nueva que ninguno haya hecho y cocínenla juntos esta semana.', cat:'Calidad de tiempo' },
+  { ico:'💌', nombre:'Carta de amor', desc:'Escribile una carta a mano contando tres cosas que amás de él o ella. Sin celular.', cat:'Expresión' },
+  { ico:'📵', nombre:'Noche sin pantallas', desc:'Una noche entera sin celulares, computadoras ni TV. Solo ustedes dos.', cat:'Conexión' },
+  { ico:'🚶', nombre:'Caminata sin destino', desc:'Salgan a caminar sin saber a dónde van. Déjense llevar y conversen.', cat:'Aventura' },
+  { ico:'🎵', nombre:'Playlist compartida', desc:'Cada uno elige 5 canciones que representen su amor. Escúchenlas juntos.', cat:'Creatividad' },
+  { ico:'📸', nombre:'Foto del recuerdo', desc:'Busquen una foto antigua de los dos y recreen esa misma foto hoy.', cat:'Nostalgia' },
+  { ico:'🌅', nombre:'Ver el amanecer', desc:'Levántense temprano y vean el amanecer juntos. Sin apuro, solo presencia.', cat:'Romanticismo' },
+  { ico:'🎲', nombre:'Noche de juegos', desc:'Elijan un juego de mesa o de cartas y compitan. El que pierde le da un masaje al otro.', cat:'Diversión' },
+  { ico:'📝', nombre:'Lista de sueños', desc:'Hagan juntos una lista de 10 cosas que quieren vivir juntos. Cuélguenla en casa.', cat:'Futuro' },
+  { ico:'🤫', nombre:'Sorpresa del día', desc:'Cada uno le hace una sorpresa al otro durante la semana sin decir qué es.', cat:'Detalle' },
+  { ico:'💆', nombre:'Masajes mutuos', desc:'Dediquen 20 minutos a darse masajes. Sin hablar, solo sentir.', cat:'Intimidad' },
+  { ico:'🎤', nombre:'Canción para vos', desc:'Elegí una canción que represente lo que sentís por tu pareja y contale por qué.', cat:'Expresión' },
+];
+
+// ── Estado ────────────────────────────────────────────
+let _yo      = null;
+let _pareja  = null;
+let _parejaId = null;
+let _desde   = null;
+let _desafiosHechos = {};
+
+// Firebase config
+const sc = localStorage.getItem('vinculo_cfg');
+if(sc) setTimeout(()=> window._iniciarFirebase && window._iniciarFirebase(JSON.parse(sc)), 300);
+
+function conectar() {
+  const cfg = {
+    apiKey:    document.getElementById('c-apiKey').value.trim(),
+    authDomain:document.getElementById('c-authDomain').value.trim(),
+    databaseURL:document.getElementById('c-dbURL').value.trim(),
+    projectId: document.getElementById('c-projectId').value.trim(),
+    appId:     document.getElementById('c-appId').value.trim(),
+  };
+  if(!cfg.apiKey||!cfg.databaseURL){toast('Completá apiKey y databaseURL');return;}
+  localStorage.setItem('vinculo_cfg', JSON.stringify(cfg));
+  window._iniciarFirebase(cfg);
+}
+
+// ── Login ─────────────────────────────────────────────
+function mostrarLogin()    { document.getElementById('login-nuevo').style.display='none'; document.getElementById('login-existente').style.display='block'; }
+function mostrarRegistro() { document.getElementById('login-existente').style.display='none'; document.getElementById('login-nuevo').style.display='block'; }
+
+async function crearCuenta() {
+  if(!window._firebase_ok){toast('Conectá Firebase primero');return;}
+  const yo     = document.getElementById('mi-nombre').value.trim();
+  const pareja = document.getElementById('pareja-nombre').value.trim();
+  const desde  = document.getElementById('fecha-inicio').value;
+  if(!yo||!pareja){toast('Ingresá ambos nombres');return;}
+
+  const id = [yo,pareja].sort().join('_').replace(/\s/g,'').toLowerCase();
+  await window._set(`parejas/${id}`, { nombre1:yo, nombre2:pareja, desde, ts:Date.now() });
+  localStorage.setItem('vinculo_yo', yo);
+  localStorage.setItem('vinculo_id', id);
+  iniciarSesion();
+}
+
+async function loginExistente() {
+  if(!window._firebase_ok){toast('Conectá Firebase primero');return;}
+  const yo = document.getElementById('login-nombre').value.trim();
+  if(!yo){toast('Ingresá tu nombre');return;}
+  localStorage.setItem('vinculo_yo', yo);
+  iniciarSesion();
+}
+
+async function iniciarSesion() {
+  _yo = localStorage.getItem('vinculo_yo');
+  if(!_yo || !window._firebase_ok) return;
+
+  // Buscar pareja
+  const parejas = await window._get('parejas') || {};
+  let encontrada = null;
+  let encontradaId = null;
+  Object.entries(parejas).forEach(([k,v]) => {
+    if(v.nombre1===_yo||v.nombre2===_yo){ encontrada=v; encontradaId=k; }
+  });
+
+  if(!encontrada) {
+    // Nuevo usuario sin pareja registrada
+    document.getElementById('screen-login').style.display = 'flex';
+    document.getElementById('screen-app').style.display   = 'none';
+    return;
+  }
+
+  _pareja   = encontrada.nombre1===_yo ? encontrada.nombre2 : encontrada.nombre1;
+  _parejaId = encontradaId;
+  _desde    = encontrada.desde;
+
+  document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-app').style.display   = 'block';
+
+  // Header
+  document.getElementById('hdr-pareja').textContent = '♥ ' + _pareja;
+  const dias = calcularDias(_desde);
+  document.getElementById('hdr-dias').textContent = dias + ' días juntos';
+
+  // Suscribir diario
+  window._on(`diarios/${_parejaId}`, data => renderDiario(data));
+
+  // Suscribir desafíos hechos
+  window._on(`desafios_hechos/${_parejaId}`, data => {
+    _desafiosHechos = data || {};
+    renderDesafios();
+    actualizarStDesafios();
+  });
+
+  // Suscribir respuestas pregunta
+  window._on(`preguntas/${_parejaId}/${preguntaHoy()}`, data => renderRespuestas(data));
+
+  cargarInicio();
+  renderPerfil();
+}
+
+function cerrarSesion() {
+  localStorage.removeItem('vinculo_yo');
+  localStorage.removeItem('vinculo_id');
+  _yo = null; _pareja = null; _parejaId = null;
+  document.getElementById('screen-login').style.display = 'flex';
+  document.getElementById('screen-app').style.display   = 'none';
+  mostrarRegistro();
+}
+
+// ── Inicio ────────────────────────────────────────────
+function cargarInicio() {
+  // Contador
+  const dias = calcularDias(_desde);
+  document.getElementById('cnt-dias').textContent  = dias;
+  document.getElementById('cnt-label').textContent = dias === 1 ? 'día' : 'días';
+
+  // Pregunta del día
+  const idx = Math.floor(Date.now() / 86400000) % PREGUNTAS.length;
+  document.getElementById('preg-txt').textContent = PREGUNTAS[idx];
+
+  // Desafío de la semana
+  const semIdx = Math.floor(Date.now() / (86400000*7)) % DESAFIOS.length;
+  document.getElementById('desafio-semana').textContent = DESAFIOS[semIdx].nombre + ' — ' + DESAFIOS[semIdx].desc;
+}
+
+function preguntaHoy() {
+  return new Date().toISOString().slice(0,10).replace(/-/g,'');
+}
+
+function renderRespuestas(data) {
+  const area = document.getElementById('respuestas-area');
+  const miResp = data?.[_yo.replace(/\s/g,'_')] || null;
+  const parejaResp = data?.[_pareja.replace(/\s/g,'_')] || null;
+
+  let html = '';
+  if(miResp) {
+    html += `<div class="resp-guardada"><div class="resp-autor">${_yo}</div>${miResp}</div>`;
+  } else {
+    html += `
+      <div>
+        <div class="txt-xs" style="margin-bottom:6px">Tu respuesta</div>
+        <textarea class="resp-input" id="mi-resp" placeholder="Escribí tu respuesta…"></textarea>
+        <button class="btn btn-rose btn-full mt12" onclick="guardarRespuesta()">Guardar respuesta</button>
+      </div>`;
+  }
+  if(parejaResp) {
+    html += `<div class="resp-guardada" style="border-color:rgba(196,82,110,0.15)"><div class="resp-autor" style="color:var(--gold)">${_pareja}</div>${parejaResp}</div>`;
+  } else {
+    html += `<div class="txt-xs" style="padding:10px;background:var(--bg2);color:var(--ink3)">⏳ ${_pareja} aún no respondió…</div>`;
+  }
+  area.innerHTML = html;
+}
+
+async function guardarRespuesta() {
+  const txt = document.getElementById('mi-resp')?.value.trim();
+  if(!txt){toast('Escribí algo primero');return;}
+  const key = _yo.replace(/\s/g,'_');
+  await window._update(`preguntas/${_parejaId}/${preguntaHoy()}`, {[key]: txt});
+  toast('✓ Respuesta guardada');
+}
+
+async function completarDesafioSemana() {
+  const semIdx = Math.floor(Date.now() / (86400000*7)) % DESAFIOS.length;
+  const key = 'sem_' + Math.floor(Date.now() / (86400000*7));
+  await window._update(`desafios_hechos/${_parejaId}`, {[key]: {nombre: DESAFIOS[semIdx].nombre, por: _yo, ts: Date.now()}});
+  document.getElementById('btn-desafio-ok').textContent = '✓ ¡Completado!';
+  document.getElementById('btn-desafio-ok').classList.add('hecho');
+  toast('🎉 ¡Desafío completado!');
+}
+
+// ── Diario ────────────────────────────────────────────
+async function escribirDiario() {
+  if(!window._firebase_ok){toast('Conectá Firebase primero');return;}
+  const txt = document.getElementById('diario-txt').value.trim();
+  if(!txt){toast('Escribí algo primero');return;}
+  const emoji = document.getElementById('diario-emoji').value;
+  await window._push(`diarios/${_parejaId}`, {
+    ts:    Date.now(),
+    fecha: new Date().toLocaleDateString('es-AR'),
+    autor: _yo,
+    txt,
+    emoji
+  });
+  document.getElementById('diario-txt').value = '';
+  toast('✓ Guardado en el diario');
+}
+
+function renderDiario(data) {
+  const cont = document.getElementById('entradas-diario');
+  if(!data){
+    cont.innerHTML = '<div class="empty"><div class="empty-icon">📖</div>El diario está vacío.<br>¡Escribí la primera entrada!</div>';
+    document.getElementById('st-entradas').textContent = 0;
+    return;
+  }
+  const entradas = Object.values(data).sort((a,b)=>b.ts-a.ts);
+  document.getElementById('st-entradas').textContent = entradas.length;
+  cont.innerHTML = entradas.map(e => `
+    <div class="diario-entry">
+      <div class="entry-emoji">${e.emoji}</div>
+      <div class="entry-header">
+        <div class="entry-autor" style="color:${e.autor===_yo?'var(--rose)':'var(--gold)'}">${e.autor}</div>
+        <div class="entry-fecha">${e.fecha}</div>
+      </div>
+      <div class="entry-txt">${e.txt}</div>
+    </div>
+  `).join('');
+}
+
+// ── Desafíos ──────────────────────────────────────────
+function renderDesafios() {
+  const cont = document.getElementById('lista-desafios');
+  cont.innerHTML = DESAFIOS.map((d,i) => {
+    const key = 'des_'+i;
+    const hecho = !!_desafiosHechos?.[key];
+    return `
+      <div class="desafio-item">
+        <div class="desafio-ico">${d.ico}</div>
+        <div class="desafio-body">
+          <div class="desafio-nombre">${d.nombre}</div>
+          <div class="desafio-desc">${d.desc}</div>
+          <div class="desafio-cat">${d.cat}</div>
+        </div>
+        <button class="desafio-completar ${hecho?'hecho':''}" onclick="completarDesafio(${i})">
+          ${hecho ? '✓ Hecho' : 'Hacerlo'}
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+async function completarDesafio(i) {
+  const key = 'des_'+i;
+  if(_desafiosHechos?.[key]){toast('¡Ya completaron este desafío!');return;}
+  await window._update(`desafios_hechos/${_parejaId}`, {[key]: {nombre: DESAFIOS[i].nombre, por: _yo, ts: Date.now()}});
+  toast('🎉 ¡'+DESAFIOS[i].nombre+' completado!');
+}
+
+function actualizarStDesafios() {
+  document.getElementById('st-desafios').textContent = Object.keys(_desafiosHechos||{}).length;
+}
+
+// ── Perfil ────────────────────────────────────────────
+function renderPerfil() {
+  if(!_yo||!_pareja) return;
+  const dias = calcularDias(_desde);
+  document.getElementById('perf-nombres').innerHTML = `${_yo} <em>&</em> ${_pareja}`;
+  document.getElementById('perf-desde').textContent = _desde ? 'Juntos desde ' + new Date(_desde+'T12:00:00').toLocaleDateString('es-AR', {day:'numeric',month:'long',year:'numeric'}) : '';
+  document.getElementById('st-dias').textContent     = dias;
+  document.getElementById('perf-usuario').textContent = _yo;
+}
+
+// ── Navegación ────────────────────────────────────────
+function ir(sec) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('activa'));
+  document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('activo'));
+  document.getElementById('sec-'+sec).classList.add('activa');
+  document.querySelectorAll('.bnav-item').forEach(b=>{
+    if(b.getAttribute('onclick')?.includes(sec)) b.classList.add('activo');
+  });
+}
+
+// ── Utils ─────────────────────────────────────────────
+function calcularDias(desde) {
+  if(!desde) return 0;
+  const d = new Date(desde+'T12:00:00');
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+</script>
+</body>
+</html>
